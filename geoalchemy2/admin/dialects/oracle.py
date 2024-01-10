@@ -16,7 +16,14 @@ def load_oracle_spatial_driver(dbapi_conn, *args):
         The virtual machine is needed for the WKT conversion routines
         which are Java stored procedures.
         https://forums.oracle.com/ords/apexds/post/sdo-geometry-wkt-string-on-oracle-express-9945
-
+        With SQLPLUS and an Express edition, this statement SELECT SDO_GEOMETRY('POINT(0 0)', 8307) FROM dual
+        returns the following error:
+            ERROR at line 1:
+            ORA-29538: Java not installed
+            ORA-06512: at "MDSYS.SDO_JAVA_STP", line 82
+            ORA-06512: at "MDSYS.SDO_UTIL", line 7336
+            ORA-06512: at "MDSYS.SDO_GEOMETRY", line 180
+            ORA-06512: at line 1
     Args:
         dbapi_conn: The DBAPI connection.
     """
