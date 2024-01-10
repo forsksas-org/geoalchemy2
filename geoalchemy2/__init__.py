@@ -7,6 +7,7 @@ from geoalchemy2 import shape  # noqa
 from geoalchemy2 import types  # noqa
 from geoalchemy2.admin.dialects.geopackage import load_spatialite_gpkg  # noqa
 from geoalchemy2.admin.dialects.sqlite import load_spatialite  # noqa
+from geoalchemy2.admin.dialects.oracle import load_oracle_spatial  # noqa
 from geoalchemy2.elements import CompositeElement  # noqa
 from geoalchemy2.elements import RasterElement  # noqa
 from geoalchemy2.elements import WKBElement  # noqa
@@ -60,6 +61,7 @@ __all__ = [
     "exc",
     "load_spatialite",
     "load_spatialite_gpkg",
+    "load_oracle_spatial",
     "shape",
     "types",
 ]

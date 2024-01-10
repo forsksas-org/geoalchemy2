@@ -12,6 +12,7 @@ from typing import Optional
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql.base import ischema_names as _postgresql_ischema_names
 from sqlalchemy.dialects.sqlite.base import ischema_names as _sqlite_ischema_names
+from sqlalchemy.dialects.oracle.base import ischema_names as _oracle_ischema_names
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import func
 from sqlalchemy.types import Float
@@ -41,6 +42,7 @@ def select_dialect(dialect_name):
         "mysql": dialects.mysql,
         "postgresql": dialects.postgresql,
         "sqlite": dialects.sqlite,
+        "oracle": dialects.oracle,
     }
     return known_dialects.get(dialect_name, dialects.common)
 
@@ -394,6 +396,9 @@ _sqlite_ischema_names["MULTIPOLYGON"] = Geometry
 _sqlite_ischema_names["CURVE"] = Geometry
 _sqlite_ischema_names["GEOMETRYCOLLECTION"] = Geometry
 _sqlite_ischema_names["RASTER"] = Raster
+
+_oracle_ischema_names["SDO_GEOMETRY"] = Geometry
+_oracle_ischema_names["SDO_GEORASTER"] = Raster
 
 
 class SummaryStats(CompositeType):
