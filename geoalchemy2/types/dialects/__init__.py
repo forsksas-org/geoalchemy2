@@ -3,5 +3,6 @@ from geoalchemy2.types.dialects import common  # noqa
 from geoalchemy2.types.dialects import geopackage  # noqa
 from geoalchemy2.types.dialects import mssql  # noqa
 from geoalchemy2.types.dialects import mysql  # noqa
+from geoalchemy2.types.dialects import oracle  # noqa
 from geoalchemy2.types.dialects import postgresql  # noqa
 from geoalchemy2.types.dialects import sqlite  # noqa
