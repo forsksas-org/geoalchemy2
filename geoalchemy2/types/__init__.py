@@ -10,6 +10,7 @@ from typing import Dict
 from typing import Optional
 
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.mssql.base import ischema_names as _mssql_ischema_names
 from sqlalchemy.dialects.postgresql.base import ischema_names as _postgresql_ischema_names
 from sqlalchemy.dialects.sqlite.base import ischema_names as _sqlite_ischema_names
 from sqlalchemy.ext.compiler import compiles
@@ -38,6 +39,7 @@ def select_dialect(dialect_name):
     """Select the dialect from its name."""
     known_dialects = {
         "geopackage": dialects.geopackage,
+        "mssql": dialects.mssql,
         "mysql": dialects.mysql,
         "postgresql": dialects.postgresql,
         "sqlite": dialects.sqlite,
@@ -394,6 +396,9 @@ _sqlite_ischema_names["MULTIPOLYGON"] = Geometry
 _sqlite_ischema_names["CURVE"] = Geometry
 _sqlite_ischema_names["GEOMETRYCOLLECTION"] = Geometry
 _sqlite_ischema_names["RASTER"] = Raster
+
+_mssql_ischema_names["geometry"] = Geometry
+_mssql_ischema_names["geography"] = Geography
 
 
 class SummaryStats(CompositeType):
