@@ -152,8 +152,13 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
     wkb_data = list(element.clauses)[0].value
     if isinstance(wkb_data, memoryview):
-        list(element.clauses)[0].value = wkb_data.tobytes()
+        list(element.clauses)[0].value = wkb_data.tobytes().hex()
     compiled = compiler.process(element.clauses, **kw)
+
+    # Use TO_BLOB to convert the hexadecimal string
+    compiled_list = compiled.split(',')
+    compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
+    compiled = ','.join(c for c in compiled_list)
     srid = element.type.srid
 
     if srid > 0:
@@ -165,6 +170,11 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
 @compiles(functions.ST_Within, "oracle")  # type: ignore
 def _Oracle_ST_Within(element, compiler, **kw):
     return _compile_ST_Within_Oracle(element, compiler, **kw)
+
+
+@compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore
+def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):
+    return _compile_GeomFromWKB_Oracle(element, compiler, **kw)
 
 
 @compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore

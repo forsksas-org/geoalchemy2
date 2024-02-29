@@ -2,4 +2,4 @@
 
 
 def bind_processor_process(spatial_type, bindvalue):
-    pass
+    return bindvalue
