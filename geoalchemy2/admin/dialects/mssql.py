@@ -70,6 +70,14 @@ def STAsBinary(element, compiler, **kw):
     return f"{clauses}.STAsBinary()"
 
 
+def STGeomFromText(element, compiler, **kw):
+    element.identifier = "geometry::STGeomFromText"
+    compiled = compiler.process(element.clauses, **kw)
+    srid = element.type.srid if element.type.srid > 0 else 0
+
+    return "{}({}, {})".format(element.identifier, compiled, srid)
+
+
 def STGeomFromWKB(element, compiler, **kw):
     element.identifier = "geometry::STGeomFromWKB"
     wkb_data = list(element.clauses)[0].value
@@ -100,5 +108,7 @@ compiles(functions.ST_AsEWKB, "mssql")(STAsBinary)
 
 compiles(functions.ST_GeomFromWKB, "mssql")(STGeomFromWKB)
 compiles(functions.ST_GeomFromEWKB, "mssql")(STGeomFromWKB)
+
+compiles(functions.ST_GeomFromEWKT, "mssql")(STGeomFromText)
 
 compiles(functions.ST_Within, "mssql")(STWithin)
