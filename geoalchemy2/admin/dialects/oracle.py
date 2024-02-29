@@ -177,8 +177,8 @@ def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):
     return _compile_GeomFromWKB_Oracle(element, compiler, **kw)
 
 
-@compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore
-def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):
+@compiles(functions.ST_GeomFromWKB, "oracle")  # type: ignore
+def _Oracle_ST_GeomFromWKB(element, compiler, **kw):
     return _compile_GeomFromWKB_Oracle(element, compiler, **kw)
 
 
