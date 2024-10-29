@@ -101,6 +101,34 @@ def STWithin(element, compiler, **kw):
     compiled_clauses = compiler.process(clauses, **kw)
     return f"{compiled_obj}.STWithin({compiled_clauses})=1"
 
+def STDWithin(element, compiler, **kw):
+    obj = element.clauses.clauses[0]
+    compiled_obj = compiler.process(obj, **kw)
+    compiled_obj = _fix_GIS_schema_issue(compiled_obj)
+
+    d = list(element.clauses)[-1].value
+    clauses = ClauseList(*element.clauses.clauses[1:-1])
+    compiled_clauses = compiler.process(clauses, **kw)
+    return f"{compiled_obj}.STDistance({compiled_clauses}) <= {d}"
+
+def STCoveredBy(element, compiler, **kw):
+    obj = element.clauses.clauses[0]
+    compiled_obj = compiler.process(obj, **kw)
+    compiled_obj = _fix_GIS_schema_issue(compiled_obj)
+
+    clauses = ClauseList(*element.clauses.clauses[1:])
+    compiled_clauses = compiler.process(clauses, **kw)
+    return f"{compiled_obj}.STDistance({compiled_clauses}) <= 0"
+
+def STRelate(element, compiler, **kw):
+    obj = element.clauses.clauses[0]
+    compiled_obj = compiler.process(obj, **kw)
+    compiled_obj = _fix_GIS_schema_issue(compiled_obj)
+
+    pattern = list(element.clauses)[-1].value
+    clauses = ClauseList(*element.clauses.clauses[1:-1])
+    compiled_clauses = compiler.process(clauses, **kw)
+    return f"{compiled_obj}.STRelate({compiled_clauses}, '{pattern}') = 1"
 
 compiles(functions.ST_AsBinary, "mssql")(STAsBinary)
 compiles(functions.ST_AsWKB, "mssql")(STAsBinary)
@@ -112,3 +140,6 @@ compiles(functions.ST_GeomFromEWKB, "mssql")(STGeomFromWKB)
 compiles(functions.ST_GeomFromEWKT, "mssql")(STGeomFromText)
 
 compiles(functions.ST_Within, "mssql")(STWithin)
+compiles(functions.ST_DWithin, "mssql")(STDWithin)
+compiles(functions.ST_CoveredBy, "mssql")(STCoveredBy)
+compiles(functions.ST_Relate, "mssql")(STRelate)

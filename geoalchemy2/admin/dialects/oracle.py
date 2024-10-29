@@ -2,6 +2,7 @@
 
 from sqlalchemy import text
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.elements import ClauseList
 
 from geoalchemy2 import functions
 from geoalchemy2.types import Geometry
@@ -136,6 +137,28 @@ def _compile_ST_Within_Oracle(element, compiler, **kw):
 
     return "{}({}) = 'TRUE'".format(element.identifier, compiled)
 
+def _compile_ST_DWithin_Oracle(element, compiler, **kw):
+    element.identifier = "SDO_WITHIN_DISTANCE"
+    d = list(element.clauses)[-1].value
+    clauses = ClauseList(*element.clauses.clauses[:-1])
+    compiled = compiler.process(clauses, **kw)
+
+    return "{}({}, 'DISTANCE = {}') = 'TRUE'".format(element.identifier, compiled, d)
+
+def _compile_ST_CoveredBy_Oracle(element, compiler, **kw):
+    element.identifier = "SDO_RELATE"
+    compiled = compiler.process(element.clauses, **kw)
+
+    return "{}({}, 'mask=inside+touch') = 'TRUE'".format(element.identifier, compiled)
+
+def _compile_ST_Relate_Oracle(element, compiler, **kw):
+    element.identifier = "SDO_RELATE"
+    pattern = list(element.clauses)[-1].value
+    clauses = ClauseList(*element.clauses.clauses[:-1])
+    compiled = compiler.process(clauses, **kw)
+
+    return "{}({}, 'mask={}') = 'TRUE'".format(element.identifier, compiled, pattern)
+
 
 def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
@@ -171,6 +194,17 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
 def _Oracle_ST_Within(element, compiler, **kw):
     return _compile_ST_Within_Oracle(element, compiler, **kw)
 
+@compiles(functions.ST_DWithin, "oracle")  # type: ignore
+def _Oracle_ST_DWithin(element, compiler, **kw):
+    return _compile_ST_DWithin_Oracle(element, compiler, **kw)
+
+@compiles(functions.ST_CoveredBy, "oracle")  # type: ignore
+def _Oracle_ST_CoveredBy(element, compiler, **kw):
+    return _compile_ST_CoveredBy_Oracle(element, compiler, **kw)
+
+@compiles(functions.ST_Relate, "oracle")  # type: ignore
+def _Oracle_ST_Relate(element, compiler, **kw):
+    return _compile_ST_Relate_Oracle(element, compiler, **kw)
 
 @compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore
 def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):

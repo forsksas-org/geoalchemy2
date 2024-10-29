@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlalchemy import text
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql import func
 from sqlalchemy.sql import select
 
@@ -366,3 +367,14 @@ def register_sqlite_mapping(mapping):
 
 
 register_sqlite_mapping(_SQLITE_FUNCTIONS)
+
+def ST_DWithin(element, compiler, **kw):
+    obj = element.clauses.clauses[0]
+    compiled_obj = compiler.process(obj, **kw)
+
+    d = list(element.clauses)[-1].value
+    clauses = ClauseList(*element.clauses.clauses[1:-1])
+    compiled_clauses = compiler.process(clauses, **kw)
+    return f"{compiled_obj}.ST_Distance({compiled_clauses}) <= {d}"
+
+compiles(functions.ST_DWithin, "sqlite")(ST_DWithin)
