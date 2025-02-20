@@ -9,6 +9,7 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.mssql.base import ischema_names as _mssql_ischema_names
 from sqlalchemy.dialects.postgresql.base import ischema_names as _postgresql_ischema_names
@@ -247,6 +248,23 @@ class Geometry(_GISType):
 
     cache_ok = False
     """ Disable cache for this type. """
+
+
+class SQLGeometry(TypeDecorator):
+    """ Use type_coerce(wk_element, SQLGeometry) to generate a query that can be compiled to a string.
+    By default, GeoAlchemy's requests can only be executed.
+
+    For example, use:
+        geo = from_shape(shape(feature), srid=26916)
+        q = session.query(Poi).filter(Poi.geom.ST_Intersects(type_coerce(geo, SQLGeometry)))
+    instead of:
+        q = session.query(Poi).filter(Poi.geom.ST_Intersects(geo))
+    """
+
+    impl = Geometry
+
+    def process_literal_param(self, value, dialect):
+        return f"'{select_dialect(dialect.name).bind_processor_process(None, value)}'"
 
 
 class Geography(_GISType):

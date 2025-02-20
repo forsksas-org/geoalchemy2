@@ -15,6 +15,7 @@ from geoalchemy2.elements import WKTElement  # noqa
 from geoalchemy2.exc import ArgumentError  # noqa
 from geoalchemy2.types import Geography  # noqa
 from geoalchemy2.types import Geometry  # noqa
+from geoalchemy2.types import SQLGeometry  # noqa
 from geoalchemy2.types import Raster  # noqa
 
 admin.setup_ddl_event_listeners()
@@ -52,6 +53,7 @@ __all__ = [
     "CompositeElement",
     "Geography",
     "Geometry",
+    "SQLGeometry",
     "Raster",
     "RasterElement",
     "WKBElement",
