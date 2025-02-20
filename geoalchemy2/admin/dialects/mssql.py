@@ -73,7 +73,9 @@ def STAsBinary(element, compiler, **kw):
 def STGeomFromText(element, compiler, **kw):
     element.identifier = "geometry::STGeomFromText"
     compiled = compiler.process(element.clauses, **kw)
-    srid = element.type.srid if element.type.srid > 0 else 0
+    srid = list(element.clauses)[0].value.srid
+    srid = srid if srid > 0 else 0
+    # srid = element.type.srid if element.type.srid > 0 else 0
 
     return "{}({}, {})".format(element.identifier, compiled, srid)
 
@@ -101,6 +103,7 @@ def STWithin(element, compiler, **kw):
     compiled_clauses = compiler.process(clauses, **kw)
     return f"{compiled_obj}.STWithin({compiled_clauses})=1"
 
+
 def STDWithin(element, compiler, **kw):
     obj = element.clauses.clauses[0]
     compiled_obj = compiler.process(obj, **kw)
@@ -111,6 +114,7 @@ def STDWithin(element, compiler, **kw):
     compiled_clauses = compiler.process(clauses, **kw)
     return f"{compiled_obj}.STDistance({compiled_clauses}) <= {d}"
 
+
 def STCoveredBy(element, compiler, **kw):
     obj = element.clauses.clauses[0]
     compiled_obj = compiler.process(obj, **kw)
@@ -119,6 +123,7 @@ def STCoveredBy(element, compiler, **kw):
     clauses = ClauseList(*element.clauses.clauses[1:])
     compiled_clauses = compiler.process(clauses, **kw)
     return f"{compiled_obj}.STDistance({compiled_clauses}) <= 0"
+
 
 def STRelate(element, compiler, **kw):
     obj = element.clauses.clauses[0]
@@ -129,6 +134,7 @@ def STRelate(element, compiler, **kw):
     clauses = ClauseList(*element.clauses.clauses[1:-1])
     compiled_clauses = compiler.process(clauses, **kw)
     return f"{compiled_obj}.STRelate({compiled_clauses}, '{pattern}') = 1"
+
 
 compiles(functions.ST_AsBinary, "mssql")(STAsBinary)
 compiles(functions.ST_AsWKB, "mssql")(STAsBinary)

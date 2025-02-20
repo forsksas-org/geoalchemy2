@@ -77,6 +77,7 @@ def reflect_geometry_column(inspector, table, column_info):
         if srid_res:
             column_info["type"].srid = srid_res[0]
 
+
 def before_create(table, bind, **kw):
     """Handle spatial indexes during the before_create event."""
     pass
@@ -131,13 +132,14 @@ def register_oracle_mapping(mapping):
 register_oracle_mapping(_ORACLE_FUNCTIONS)
 
 
-def _compile_ST_Within_Oracle(element, compiler, **kw):
+def ST_Within(element, compiler, **kw):
     element.identifier = "SDO_INSIDE"
     compiled = compiler.process(element.clauses, **kw)
 
     return "{}({}) = 'TRUE'".format(element.identifier, compiled)
 
-def _compile_ST_DWithin_Oracle(element, compiler, **kw):
+
+def ST_DWithin(element, compiler, **kw):
     element.identifier = "SDO_WITHIN_DISTANCE"
     d = list(element.clauses)[-1].value
     clauses = ClauseList(*element.clauses.clauses[:-1])
@@ -145,13 +147,15 @@ def _compile_ST_DWithin_Oracle(element, compiler, **kw):
 
     return "{}({}, 'DISTANCE = {}') = 'TRUE'".format(element.identifier, compiled, d)
 
-def _compile_ST_CoveredBy_Oracle(element, compiler, **kw):
+
+def ST_CoveredBy(element, compiler, **kw):
     element.identifier = "SDO_RELATE"
     compiled = compiler.process(element.clauses, **kw)
 
     return "{}({}, 'mask=inside+touch') = 'TRUE'".format(element.identifier, compiled)
 
-def _compile_ST_Relate_Oracle(element, compiler, **kw):
+
+def ST_Relate(element, compiler, **kw):
     element.identifier = "SDO_RELATE"
     pattern = list(element.clauses)[-1].value
     clauses = ClauseList(*element.clauses.clauses[:-1])
@@ -160,10 +164,11 @@ def _compile_ST_Relate_Oracle(element, compiler, **kw):
     return "{}({}, 'mask={}') = 'TRUE'".format(element.identifier, compiled, pattern)
 
 
-def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
+def ST_GeomFromText(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
     compiled = compiler.process(element.clauses, **kw)
-    srid = element.type.srid
+    srid = list(element.clauses)[0].value.srid
+    # srid = element.type.srid
 
     if srid > 0:
         return "{}({}, {})".format(element.identifier, compiled, srid)
@@ -171,7 +176,7 @@ def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
         return "{}({})".format(element.identifier, compiled)
 
 
-def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
+def ST_GeomFromWKB(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
     wkb_data = list(element.clauses)[0].value
     if isinstance(wkb_data, memoryview):
@@ -190,37 +195,12 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
         return "{}({})".format(element.identifier, compiled)
 
 
-@compiles(functions.ST_Within, "oracle")  # type: ignore
-def _Oracle_ST_Within(element, compiler, **kw):
-    return _compile_ST_Within_Oracle(element, compiler, **kw)
+compiles(functions.ST_GeomFromEWKB, "oracle")(ST_GeomFromWKB)
+compiles(functions.ST_GeomFromWKB, "oracle")(ST_GeomFromWKB)
+compiles(functions.ST_GeomFromEWKT, "oracle")(ST_GeomFromText)
+compiles(functions.ST_GeomFromText, "oracle")(ST_GeomFromText)
 
-@compiles(functions.ST_DWithin, "oracle")  # type: ignore
-def _Oracle_ST_DWithin(element, compiler, **kw):
-    return _compile_ST_DWithin_Oracle(element, compiler, **kw)
-
-@compiles(functions.ST_CoveredBy, "oracle")  # type: ignore
-def _Oracle_ST_CoveredBy(element, compiler, **kw):
-    return _compile_ST_CoveredBy_Oracle(element, compiler, **kw)
-
-@compiles(functions.ST_Relate, "oracle")  # type: ignore
-def _Oracle_ST_Relate(element, compiler, **kw):
-    return _compile_ST_Relate_Oracle(element, compiler, **kw)
-
-@compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore
-def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):
-    return _compile_GeomFromWKB_Oracle(element, compiler, **kw)
-
-
-@compiles(functions.ST_GeomFromWKB, "oracle")  # type: ignore
-def _Oracle_ST_GeomFromWKB(element, compiler, **kw):
-    return _compile_GeomFromWKB_Oracle(element, compiler, **kw)
-
-
-@compiles(functions.ST_GeomFromEWKT, "oracle")  # type: ignore
-def _Oracle_ST_GeomFromEWKT(element, compiler, **kw):
-    return _compile_ST_GeomFromText_Oracle(element, compiler, **kw)
-
-
-@compiles(functions.ST_GeomFromText, "oracle")  # type: ignore
-def _Oracle_ST_GeomFromText(element, compiler, **kw):
-    return _compile_ST_GeomFromText_Oracle(element, compiler, **kw)
+compiles(functions.ST_Within, "oracle")(ST_Within)
+compiles(functions.ST_DWithin, "oracle")(ST_DWithin)
+compiles(functions.ST_CoveredBy, "oracle", ST_CoveredBy)
+compiles(functions.ST_Relate, "oracle")(ST_Relate)
