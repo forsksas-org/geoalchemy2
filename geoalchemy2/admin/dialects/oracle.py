@@ -71,7 +71,7 @@ def reflect_geometry_column(inspector, table, column_info):
     # Update the srid
     if column_info["type"].srid == -1:
         statement = ("SELECT SDO_SRID FROM MDSYS.SDO_GEOM_METADATA_TABLE "
-                     f"WHERE SDO_TABLE_NAME='{table.schema}.{table.name.upper()}' "
+                     f"WHERE SDO_OWNER='{table.schema}' AND SDO_TABLE_NAME='{table.name.upper()}' "
                      f"AND SDO_COLUMN_NAME='{column_info['name'].upper()}'")
         srid_res = inspector.bind.execute(text(statement)).fetchone()
         if srid_res:
