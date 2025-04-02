@@ -71,11 +71,12 @@ def reflect_geometry_column(inspector, table, column_info):
     # Update the srid
     if column_info["type"].srid == -1:
         statement = ("SELECT SDO_SRID FROM MDSYS.SDO_GEOM_METADATA_TABLE "
-                     f"WHERE SDO_TABLE_NAME='{table.schema}.{table.name.upper()}' "
+                     f"WHERE SDO_OWNER='{table.schema}' AND SDO_TABLE_NAME='{table.name.upper()}' "
                      f"AND SDO_COLUMN_NAME='{column_info['name'].upper()}'")
         srid_res = inspector.bind.execute(text(statement)).fetchone()
         if srid_res:
             column_info["type"].srid = srid_res[0]
+
 
 def before_create(table, bind, **kw):
     """Handle spatial indexes during the before_create event."""
@@ -137,6 +138,7 @@ def _compile_ST_Within_Oracle(element, compiler, **kw):
 
     return "{}({}) = 'TRUE'".format(element.identifier, compiled)
 
+
 def _compile_ST_DWithin_Oracle(element, compiler, **kw):
     element.identifier = "SDO_WITHIN_DISTANCE"
     d = list(element.clauses)[-1].value
@@ -145,11 +147,13 @@ def _compile_ST_DWithin_Oracle(element, compiler, **kw):
 
     return "{}({}, 'DISTANCE = {}') = 'TRUE'".format(element.identifier, compiled, d)
 
+
 def _compile_ST_CoveredBy_Oracle(element, compiler, **kw):
     element.identifier = "SDO_RELATE"
     compiled = compiler.process(element.clauses, **kw)
 
     return "{}({}, 'mask=inside+touch') = 'TRUE'".format(element.identifier, compiled)
+
 
 def _compile_ST_Relate_Oracle(element, compiler, **kw):
     element.identifier = "SDO_RELATE"
@@ -194,17 +198,21 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
 def _Oracle_ST_Within(element, compiler, **kw):
     return _compile_ST_Within_Oracle(element, compiler, **kw)
 
+
 @compiles(functions.ST_DWithin, "oracle")  # type: ignore
 def _Oracle_ST_DWithin(element, compiler, **kw):
     return _compile_ST_DWithin_Oracle(element, compiler, **kw)
+
 
 @compiles(functions.ST_CoveredBy, "oracle")  # type: ignore
 def _Oracle_ST_CoveredBy(element, compiler, **kw):
     return _compile_ST_CoveredBy_Oracle(element, compiler, **kw)
 
+
 @compiles(functions.ST_Relate, "oracle")  # type: ignore
 def _Oracle_ST_Relate(element, compiler, **kw):
     return _compile_ST_Relate_Oracle(element, compiler, **kw)
+
 
 @compiles(functions.ST_GeomFromEWKB, "oracle")  # type: ignore
 def _Oracle_ST_GeomFromEWKB(element, compiler, **kw):
