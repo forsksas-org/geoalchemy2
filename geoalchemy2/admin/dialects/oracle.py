@@ -179,13 +179,17 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
     wkb_data = list(element.clauses)[0].value
     if isinstance(wkb_data, memoryview):
-        list(element.clauses)[0].value = wkb_data.tobytes().hex()
+        from shapely.wkb import loads
+        geo = loads(wkb_data.tobytes().hex(), True)
+        list(element.clauses)[0].value = geo.wkt
     compiled = compiler.process(element.clauses, **kw)
 
     # Use TO_BLOB to convert the hexadecimal string
-    compiled_list = compiled.split(',')
-    compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
-    compiled = ','.join(c for c in compiled_list)
+    # Remove code for custom version
+    # Make it configurable when calling init
+    # compiled_list = compiled.split(',')
+    # compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
+    # compiled = ','.join(c for c in compiled_list)
     srid = element.type.srid
 
     if srid > 0:
