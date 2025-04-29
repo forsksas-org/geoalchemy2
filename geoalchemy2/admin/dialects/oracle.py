@@ -176,7 +176,7 @@ def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
 
 
 def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
-    element.identifier = "SDO_GEOMETRY"
+    element.identifier = "SDO_UTIL.FROM_WKTGEOMETRY"
     wkb_data = list(element.clauses)[0].value
     if isinstance(wkb_data, memoryview):
         from shapely.wkb import loads
