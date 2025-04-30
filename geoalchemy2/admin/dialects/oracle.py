@@ -7,6 +7,17 @@ from sqlalchemy.sql.elements import ClauseList
 from geoalchemy2 import functions
 from geoalchemy2.types import Geometry
 
+from enum import IntEnum
+
+
+class GeometryConversionGeomFromWKB(IntEnum):
+    DEFAULT_CONVERSION = 1
+    FROM_SDO_GEOMETRY_AND_WKT = 2
+    FROM_SDO_UTIL_AND_WKT = 3
+
+
+_geometry_conversion_GeomFromWKB: int = GeometryConversionGeomFromWKB.DEFAULT_CONVERSION
+
 
 def load_oracle_spatial_driver(dbapi_conn, *args):
     """Load Oracle Spatial extension in Oracle connection.
@@ -34,13 +45,17 @@ def load_oracle_spatial_driver(dbapi_conn, *args):
         raise RuntimeError("The Express edition of the Oracle database is not supported.")
 
 
-def init_oracle_spatial(dbapi_conn, *args):
+def init_oracle_spatial(dbapi_conn, *args, oracle_spatial_options: dict = None):
     """Initialize internal Oracle Spatial tables.
 
     Args:
         dbapi_conn: The DBAPI connection.
     """
-    pass
+    global _geometry_conversion_GeomFromWKB
+    if oracle_spatial_options is not None:
+        _geometry_conversion_GeomFromWKB = oracle_spatial_options.get(
+            'geometry_conversion_GeomFromWKB', GeometryConversionGeomFromWKB.DEFAULT_CONVERSION
+        )
 
 
 def load_oracle_spatial(*args, **kwargs):
@@ -177,15 +192,24 @@ def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
 
 def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
+    if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.FROM_SDO_UTIL_AND_WKT:
+        element.identifier = "SDO_UTIL.FROM_WKTGEOMETRY"
+
     wkb_data = list(element.clauses)[0].value
     if isinstance(wkb_data, memoryview):
-        list(element.clauses)[0].value = wkb_data.tobytes().hex()
+        if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.DEFAULT_CONVERSION:
+            list(element.clauses)[0].value = wkb_data.tobytes().hex()
+        else:
+            from shapely.wkb import loads
+            geo = loads(wkb_data.tobytes().hex(), True)
+            list(element.clauses)[0].value = geo.wkt
     compiled = compiler.process(element.clauses, **kw)
 
     # Use TO_BLOB to convert the hexadecimal string
-    compiled_list = compiled.split(',')
-    compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
-    compiled = ','.join(c for c in compiled_list)
+    if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.DEFAULT_CONVERSION:
+        compiled_list = compiled.split(',')
+        compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
+        compiled = ','.join(c for c in compiled_list)
     srid = element.type.srid
 
     if srid > 0:
