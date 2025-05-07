@@ -34,13 +34,15 @@ def load_oracle_spatial_driver(dbapi_conn, *args):
         raise RuntimeError("The Express edition of the Oracle database is not supported.")
 
 
-def init_oracle_spatial(dbapi_conn, *args):
+def init_oracle_spatial(dbapi_conn, *args, oracle_spatial_options: dict = None):
     """Initialize internal Oracle Spatial tables.
 
     Args:
         dbapi_conn: The DBAPI connection.
     """
-    pass
+    if oracle_spatial_options is not None:
+        # Could use special options to configure behaviour
+        pass
 
 
 def load_oracle_spatial(*args, **kwargs):
@@ -176,26 +178,30 @@ def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
 
 
 def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
-    element.identifier = "SDO_UTIL.FROM_WKTGEOMETRY"
-    wkb_data = list(element.clauses)[0].value
-    if isinstance(wkb_data, memoryview):
+    # SDO_UTIL.FROM_WKTGEOMETRY and SDO_UTIL.FROM_WKBGEOMETRY don't have the same number of parameters between 19c and 21c versions.
+    # SRID parameter could be used only with 19c version of the database.
+    # So, construction of a full SDO_GEOMETRY with SDO_ELEM_INFO_ARRAY and SDO_ORDINATE_ARRAY is required
+    element.identifier = "SDO_GEOMETRY"
+    geom_data = list(element.clauses)[0].value
+    if isinstance(geom_data, memoryview):
+        from shapely import get_coordinates
         from shapely.wkb import loads
-        geo = loads(wkb_data.tobytes().hex(), True)
-        list(element.clauses)[0].value = geo.wkt
-    compiled = compiler.process(element.clauses, **kw)
+        geom = loads(geom_data.tobytes().hex(), True)
+        coordinates_list = get_coordinates(geom).tolist()
+        append_coordinates = ",".join(
+            f'{coordinate[0]},{coordinate[1]}' for coordinate in coordinates_list
+        )
+        list(element.clauses)[0].value = append_coordinates
+        geom_data = append_coordinates
 
-    # Use TO_BLOB to convert the hexadecimal string
-    # Remove code for custom version
-    # Make it configurable when calling init
-    # compiled_list = compiled.split(',')
-    # compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
-    # compiled = ','.join(c for c in compiled_list)
-    srid = element.type.srid
+    # Support only polygon
+    polygon = 'MDSYS.SDO_ELEM_INFO_ARRAY(1,1003,1)'
+    ordinate_array = f'MDSYS.SDO_ORDINATE_ARRAY({geom_data})'
 
-    if srid > 0:
-        return "{}({}, {})".format(element.identifier, compiled, srid)
-    else:
-        return "{}({})".format(element.identifier, compiled)
+    clauses = ClauseList(*element.clauses.clauses[1:2])
+    compiled_srid = compiler.process(clauses, **kw)  # Only the SRID
+    compiled = f'2001,{compiled_srid},NULL,{polygon},{ordinate_array}'
+    return "{}({})".format(element.identifier, compiled)
 
 
 @compiles(functions.ST_Within, "oracle")  # type: ignore
