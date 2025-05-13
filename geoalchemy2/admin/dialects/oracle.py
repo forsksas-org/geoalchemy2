@@ -184,10 +184,13 @@ def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
     element.identifier = "SDO_GEOMETRY"
     geom_data = list(element.clauses)[0].value
     if isinstance(geom_data, memoryview):
-        from shapely import get_coordinates
+        import shapely
         from shapely.wkb import loads
         geom = loads(geom_data.tobytes().hex(), True)
-        coordinates_list = get_coordinates(geom).tolist()
+        if hasattr(shapely, 'get_coordinates'):
+            coordinates_list = shapely.get_coordinates(geom).tolist()
+        else:
+            coordinates_list = list(zip(*geom.exterior.coords.xy))
         append_coordinates = ",".join(
             f'{coordinate[0]},{coordinate[1]}' for coordinate in coordinates_list
         )
