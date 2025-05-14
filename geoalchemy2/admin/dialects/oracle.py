@@ -12,8 +12,7 @@ from enum import IntEnum
 
 class GeometryConversionGeomFromWKB(IntEnum):
     DEFAULT_CONVERSION = 1
-    FROM_SDO_GEOMETRY_AND_WKT = 2
-    FROM_SDO_UTIL_AND_WKT = 3
+    FULL_SDO_GEOMETRY_BUILD = 2
 
 
 _geometry_conversion_GeomFromWKB: int = GeometryConversionGeomFromWKB.DEFAULT_CONVERSION
@@ -191,31 +190,47 @@ def _compile_ST_GeomFromText_Oracle(element, compiler, **kw):
 
 
 def _compile_GeomFromWKB_Oracle(element, compiler, **kw):
+    # The default conversion mode uses the SDO_GEOMETRY constructor with BLOB and SRID (DEFAULT_CONVERSION).
+    # It seems that not all the versions of Oracle database support it.
+    # SDO_UTIL.FROM_WKTGEOMETRY and SDO_UTIL.FROM_WKBGEOMETRY don't have the same number of parameters between 19c and 21c versions.
+    # SRID parameter could be used only with 19c version of the database.
+    # So, construction of a full SDO_GEOMETRY with SDO_ELEM_INFO_ARRAY and SDO_ORDINATE_ARRAY could be required 
+    # and the second conversion mode is proposed (FULL_SDO_GEOMETRY_BUILD).
     element.identifier = "SDO_GEOMETRY"
-    if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.FROM_SDO_UTIL_AND_WKT:
-        element.identifier = "SDO_UTIL.FROM_WKTGEOMETRY"
+    geom_data = list(element.clauses)[0].value
 
-    wkb_data = list(element.clauses)[0].value
-    if isinstance(wkb_data, memoryview):
+    if isinstance(geom_data, memoryview):
         if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.DEFAULT_CONVERSION:
-            list(element.clauses)[0].value = wkb_data.tobytes().hex()
-        else:
+            list(element.clauses)[0].value = geom_data.tobytes().hex()
+        else:  # FULL_SDO_GEOMETRY_BUILD
+            import shapely
             from shapely.wkb import loads
-            geo = loads(wkb_data.tobytes().hex(), True)
-            list(element.clauses)[0].value = geo.wkt
-    compiled = compiler.process(element.clauses, **kw)
+            geom = loads(geom_data.tobytes().hex(), True)
+            if hasattr(shapely, 'get_coordinates'): # shapely >= 2.0
+                coordinates_list = shapely.get_coordinates(geom).tolist()
+            else:
+                coordinates_list = list(zip(*geom.exterior.coords.xy))
+            append_coordinates = ",".join(
+                f'{coordinate[0]},{coordinate[1]}' for coordinate in coordinates_list
+            )
+            list(element.clauses)[0].value = append_coordinates
+            geom_data = append_coordinates
 
-    # Use TO_BLOB to convert the hexadecimal string
     if _geometry_conversion_GeomFromWKB == GeometryConversionGeomFromWKB.DEFAULT_CONVERSION:
+        compiled = compiler.process(element.clauses, **kw)
         compiled_list = compiled.split(',')
         compiled_list[0] = f"TO_BLOB({compiled_list[0]})"
         compiled = ','.join(c for c in compiled_list)
-    srid = element.type.srid
 
-    if srid > 0:
-        return "{}({}, {})".format(element.identifier, compiled, srid)
-    else:
-        return "{}({})".format(element.identifier, compiled)
+    else:  # FULL_SDO_GEOMETRY_BUILD
+        # Support only polygon
+        polygon = 'MDSYS.SDO_ELEM_INFO_ARRAY(1,1003,1)'
+        ordinate_array = f'MDSYS.SDO_ORDINATE_ARRAY({geom_data})'
+
+        clauses = ClauseList(*element.clauses.clauses[1:2])
+        compiled_srid = compiler.process(clauses, **kw)  # Only the SRID
+        compiled = f'2001,{compiled_srid},NULL,{polygon},{ordinate_array}'
+    return "{}({})".format(element.identifier, compiled)
 
 
 @compiles(functions.ST_Within, "oracle")  # type: ignore
